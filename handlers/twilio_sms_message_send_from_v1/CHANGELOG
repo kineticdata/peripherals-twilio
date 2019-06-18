@@ -1,0 +1,5 @@
+Twilio_SMS_Message_Send_From_V1 (2019-30-04)
+* Added type encrypted to auth_token info value.
+
+Twilio_SMS_Message_Send_From_V1 (2014-09-10)
+* Initial version.  See README for details.

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<taskInfo version="1.0">
+    <info name="from" description="Phone number to send from - must be validated by Twilio"></info>
+    <info name="account_sid" description="Account SID"></info>
+    <info name="auth_token" description="Authorization token" type="encrypted"></info>
+</taskInfo>
+
+
