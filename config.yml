@@ -1,1 +1,8 @@
---- {}
+---
+repo-name: peripherals-twilio
+categories:
+  - messaging
+display-name: Twilio
+manufacturer: Twilio
+product: Twilio
+description: Twilio is a service that allows developers to incorporate phone calls and text messages into their applications.
