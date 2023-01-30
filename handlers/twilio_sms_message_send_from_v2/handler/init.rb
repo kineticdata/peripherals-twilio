@@ -1,5 +1,6 @@
 # Require the dependencies file to load the vendor libraries
-require File.expand_path(File.join(File.dirname(__FILE__), 'dependencies'))
+require 'net/https'
+require 'rexml/document'
 
 class TwilioSmsMessageSendFromV2
   def initialize(input)
@@ -22,12 +23,20 @@ class TwilioSmsMessageSendFromV2
 
 
   def execute
-    client = Twilio::REST::Client.new(@info_values['account_sid'],@info_values['auth_token'])
-    account = client.account
+    api_route = "https://api.twilio.com/2010-04-01/Accounts/#{@info_values['account_sid']}/Messages.json"
 
-    # 160 char max -- will throw exception
-    account.sms.messages.create({:from => @parameters['from'], 
-      :to => @parameters['to'], :body => @parameters['message']})
+    payload = {
+      "From" => @parameters['from'],
+      "To" => @parameters['to'],
+      "Body" => @parameters['message']
+    }
+
+    res = http_post(api_route, payload, {}, http_basic_headers(@info_values['account_sid'], @info_values['auth_token']))
+
+    if !res.kind_of?(Net::HTTPSuccess)
+      raise "Twilio Send handler failed: #{res.body}"
+    end
+
     # Build the results XML
     return "<results/>\n"
   end
@@ -45,4 +54,75 @@ class TwilioSmsMessageSendFromV2
   # This is a ruby constant that is used by the escape method
   ESCAPE_CHARACTERS = {'&'=>'&amp;', '>'=>'&gt;', '<'=>'&lt;', '"' => '&quot;'}
 
+  #-----------------------------------------------------------------------------
+  # The following Http helper methods are provided within this handler because
+  # task currently doesn't have a common http client module that handlers can
+  # use. If these methods were packaged as a module within the dependencies.rb
+  # file or within a gem/library, they would be under the same constraints as
+  # other vendor gems, such as RestClient, where any handler that uses
+  # RestClient is currently stuck using v1.6.7. Adding these methods
+  # directly to the handler class gives the freedom to add/modify as needed
+  # without affecting other handlers.
+  #-----------------------------------------------------------------------------
+
+
+  #-----------------------------------------------------------------------------
+  # HTTP HEADERS
+  #-----------------------------------------------------------------------------
+
+  def http_json_headers
+    {
+      "Accept" => "application/json",
+      "Content-Type" => "application/json"
+    }
+  end
+  
+  
+  def http_basic_headers(username, password)
+    http_json_headers.merge({
+      "Authorization" => "Basic #{Base64.strict_encode64("#{username}:#{password}")}"
+    })
+  end
+
+
+  #-----------------------------------------------------------------------------
+  # REST ACTIONS
+  #-----------------------------------------------------------------------------
+  
+  def http_post(url, payload, parameters, headers, http_options={})
+    uri = URI.parse(url)
+    uri.query = URI.encode_www_form(parameters) unless parameters.empty?
+    request = Net::HTTP::Post.new(uri, headers)
+    request.set_form_data(payload)
+    send_request(request, http_options)
+  end
+
+
+  #-----------------------------------------------------------------------------
+  # LOWER LEVEL METHODS
+  #-----------------------------------------------------------------------------
+
+  def send_request(request, http_options={})
+    uri = request.uri
+    Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') do |http|
+      configure_http(http, http_options)
+      http.request(request)
+    end
+  end
+  
+  
+  def build_http(uri, http_options={})
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl= true if (uri.scheme == 'https')
+    configure_http(http, http_options)
+    http
+  end
+
+
+  def configure_http(http, http_options={})
+    http_options_sym = (http_options || {}).inject({}) { |h, (k,v)| h[k.to_sym] = v; h }
+    http.verify_mode = http_options_sym[:ssl_verify] || OpenSSL::SSL::VERIFY_PEER if http.use_ssl?
+    http.read_timeout= http_options_sym[:read_timeout] unless http_options_sym[:read_timeout].nil?
+    http.open_timeout= http_options_sym[:open_timeout] unless http_options_sym[:open_timeout].nil?
+  end
 end
