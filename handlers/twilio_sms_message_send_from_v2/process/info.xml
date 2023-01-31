@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<taskInfo version="1.0">
+    <info name="account_sid" description="Account SID"></info>
+    <info name="auth_token" description="Authorization token" type="encrypted"></info>
+</taskInfo>
+
+
